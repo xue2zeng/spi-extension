@@ -164,7 +164,7 @@ public final class ExtensionLoader<T>
 			properties.load(inputStream);
 			properties.forEach((k, v) -> {
 				final String name = (String) k;
-				final String classPath = (String) v;
+				final String classPath = StringUtils.isBlank((String) v) ? name : (String) v;
 				if (StringUtils.isNoneBlank(name) && StringUtils.isNoneBlank(classPath))
 				{
 					try
@@ -313,7 +313,7 @@ public final class ExtensionLoader<T>
 		final Class<?> classEntity = this.getExtensionClasses().get(name);
 		if (Objects.isNull(classEntity))
 		{
-			throw new IllegalArgumentException(name + "name is error.");
+			throw new IllegalArgumentException(name + " name is error.");
 		}
 		Object o = this.activateInstances.get(classEntity);
 		if (null == o)
