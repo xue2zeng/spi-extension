@@ -1,0 +1,2 @@
+testImpl1=com.zeng.spi.extension.TestAnnotationSPIImpl1
+testImpl2=com.zeng.spi.extension.TestAnnotationSPIImpl2
