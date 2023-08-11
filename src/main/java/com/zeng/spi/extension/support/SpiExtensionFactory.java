@@ -8,7 +8,7 @@ import com.zeng.spi.extension.annotation.SPI;
 
 
 /**
- *
+ * The spi extension implementation factory
  */
 public class SpiExtensionFactory implements ExtensionFactory
 {

@@ -3,8 +3,7 @@ package com.zeng.spi.extension.util;
 /**
  * Helper Class for hold a value.
  *
- * @param <T>
- *           the type parameter
+ * @param <T> the type parameter
  */
 public class Holder<T>
 {

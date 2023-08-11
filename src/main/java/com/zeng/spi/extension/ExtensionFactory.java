@@ -4,10 +4,11 @@ import com.zeng.spi.extension.annotation.SPI;
 
 
 /**
- *
+ * The interface Extension factory.
  */
 @SPI
-public interface ExtensionFactory {
+public interface ExtensionFactory
+{
 	/**
 	 * Gets Extension.
 	 *

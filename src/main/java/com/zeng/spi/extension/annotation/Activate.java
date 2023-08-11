@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 
 /**
- * Join Adding this annotation to a class indicates joining the extension mechanism.
+ * Activate Adding this annotation to a class indicates joining the extension mechanism.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
