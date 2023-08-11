@@ -209,9 +209,10 @@ public final class ExtensionLoader<T>
 		{
 			classes.put(name, subClass);
 		}
-		else
+		else if (!Objects.equals(oldClass, subClass))
 		{
-			LOG.error("Load extension class error, Duplicate class oldClass is " + oldClass + "subClass is" + subClass);
+			throw new IllegalStateException("Load extension class error, Duplicate class oldClass is " + oldClass.getName()
+			+ " subClass is " + subClass.getName());
 		}
 	}
 
