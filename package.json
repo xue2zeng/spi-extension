@@ -4,9 +4,11 @@
     "@commitlint/config-conventional": "^17.7.0",
     "commitizen": "^4.3.0",
     "commitlint": "^17.7.1",
+    "commitlint-config-git-commit-emoji": "^1.0.0",
     "conventional-changelog": "^4.0.0",
     "conventional-changelog-cli": "^3.0.0",
     "cz-conventional-changelog": "^3.3.0",
+    "cz-customizable": "^7.0.0",
     "husky": "^8.0.3"
   },
   "scripts": {
@@ -16,7 +18,7 @@
   },
   "config": {
     "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
+      "path": "./node_modules/cz-customizable"
     }
   }
 }
