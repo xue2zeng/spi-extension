@@ -1,24 +1,27 @@
 {
-  "devDependencies": {
-    "@commitlint/cli": "^17.7.1",
-    "@commitlint/config-conventional": "^17.7.0",
-    "commitizen": "^4.3.0",
-    "commitlint": "^17.7.1",
-    "commitlint-config-git-commit-emoji": "^1.0.0",
-    "conventional-changelog": "^4.0.0",
-    "conventional-changelog-cli": "^3.0.0",
-    "cz-conventional-changelog": "^3.3.0",
-    "cz-customizable": "^7.0.0",
-    "husky": "^8.0.3"
-  },
-  "scripts": {
-    "prepare": "husky install",
-    "commit": "git cz",
-    "changelog": "conventional-changelog -p cz-config.js -i CHANGELOG.md -s -r 0"
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-customizable"
-    }
-  }
+	"devDependencies": {
+		"@commitlint/cli": "^17.7.1",
+		"@commitlint/config-conventional": "^17.7.0",
+		"commitizen": "^4.3.0",
+		"commitlint": "^17.7.1",
+		"commitlint-config-cz": "^0.13.3",
+		"commitlint-config-git-commit-emoji": "^1.0.0",
+		"conventional-changelog": "^4.0.0",
+		"conventional-changelog-cli": "^3.0.0",
+		"cz-conventional-changelog": "^3.3.0",
+		"cz-customizable": "^7.0.0",
+		"husky": "^8.0.3",
+		"standard-version": "^9.5.0"
+	},
+	"scripts": {
+		"prepare": "husky install",
+		"commit": "git cz",
+		"changelog": "conventional-changelog -p cz-config.js -i CHANGELOG.md -s -r 0",
+		"release": "standard-version"
+	},
+	"config": {
+		"commitizen": {
+			"path": "./node_modules/cz-customizable"
+		}
+	}
 }
