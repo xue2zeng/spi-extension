@@ -23,5 +23,6 @@
 		"commitizen": {
 			"path": "./node_modules/cz-customizable"
 		}
-	}
+	},
+	"version": "2.0.0"
 }
