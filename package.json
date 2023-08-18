@@ -17,7 +17,12 @@
 		"prepare": "husky install",
 		"commit": "git cz",
 		"changelog": "conventional-changelog -p cz-config.js -i CHANGELOG.md -s -r 0",
-		"release": "standard-version"
+		"release": "standard-version",
+		"release:beta": "standard-version --prerelease beta",
+		"release:alpha": "standard-version --prerelease alpha",
+		"release:major": "standard-version --release-as major",
+		"release:minor": "standard-version --release-as minor",
+		"release:patch": "standard-version --release-as patch"
 	},
 	"config": {
 		"commitizen": {
