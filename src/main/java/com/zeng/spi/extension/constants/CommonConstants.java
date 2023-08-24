@@ -29,4 +29,9 @@ public interface CommonConstants
 	 *
 	 */
 	Pattern NAME_SEPARATOR = Pattern.compile("\\s*[,]+\\s*");
+
+	/**
+	 *
+	 */
+	String SPECIAL_SPI_PROPERTIES = "special_spi.properties";
 }

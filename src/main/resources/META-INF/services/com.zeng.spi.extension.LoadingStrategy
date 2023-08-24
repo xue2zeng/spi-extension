@@ -1,0 +1,3 @@
+com.zeng.spi.extension.strategy.ServicesLoadingStrategy
+com.zeng.spi.extension.strategy.ExtensionLoadingStrategy
+com.zeng.spi.extension.strategy.ExtensionInternalLoadingStrategy

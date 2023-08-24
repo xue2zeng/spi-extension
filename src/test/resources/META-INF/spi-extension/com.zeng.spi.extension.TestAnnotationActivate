@@ -1,2 +1,3 @@
+com.zeng.spi.extension.TestAnnotationActivateDefaultImpl
 activateOrder1=com.zeng.spi.extension.TestAnnotationActivateImpl1
 activateOrder2=com.zeng.spi.extension.TestAnnotationActivateImpl2

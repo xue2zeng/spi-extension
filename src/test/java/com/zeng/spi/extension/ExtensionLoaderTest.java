@@ -1,7 +1,6 @@
 package com.zeng.spi.extension;
 
 import static com.zeng.spi.extension.constants.CommonConstants.GROUP_KEY;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.List;
 import java.util.Map;
@@ -9,6 +8,11 @@ import java.util.Map;
 import org.apache.commons.collections4.map.HashedMap;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import com.zeng.spi.extension.lang.Prioritized;
+import com.zeng.spi.extension.strategy.ExtensionInternalLoadingStrategy;
+import com.zeng.spi.extension.strategy.ExtensionLoadingStrategy;
+import com.zeng.spi.extension.strategy.ServicesLoadingStrategy;
 /**
  *
  */
@@ -68,11 +72,52 @@ public class ExtensionLoaderTest {
 				.getActivateExtension(protocol, new String[]
 						{}, "order");
 		Assertions.assertEquals(activateExtension.size(), 2);
-		assertSame(activateExtension.get(0).getClass(), TestAnnotationActivateImpl2.class);
-		assertSame(activateExtension.get(1).getClass(), TestAnnotationActivateImpl1.class);
+		Assertions.assertSame(activateExtension.get(0).getClass(), TestAnnotationActivateImpl2.class);
+		Assertions.assertSame(activateExtension.get(1).getClass(), TestAnnotationActivateImpl1.class);
 
 		activateExtension = ExtensionLoader.getExtensionLoader(TestAnnotationActivate.class).getActivateExtension(protocol,
 				new String[] {}, "g");
 		Assertions.assertEquals(activateExtension.size(), 0);
+
+		activateExtension = ExtensionLoader.getExtensionLoader(TestAnnotationActivate.class).getActivateExtension(protocol,
+				new String[] {}, "default_group");
+		Assertions.assertEquals(activateExtension.size(), 1);
+		Assertions.assertSame(activateExtension.get(0).getClass(), TestAnnotationActivateDefaultImpl.class);
+	}
+
+	/**
+	 *
+	 */
+	@Test
+	public void testLoadingStrategyExtension()
+	{
+		final List<LoadingStrategy> strategies = ExtensionLoader.getLoadingStrategies();
+
+		Assertions.assertEquals(3, strategies.size());
+
+		int i = 0;
+
+		LoadingStrategy loadingStrategy = strategies.get(i++);
+		Assertions.assertEquals(ExtensionInternalLoadingStrategy.class, loadingStrategy.getClass());
+		Assertions.assertEquals(Prioritized.MAX_PRIORITY, loadingStrategy.getPriority());
+
+		loadingStrategy = strategies.get(i++);
+		Assertions.assertEquals(ExtensionLoadingStrategy.class, loadingStrategy.getClass());
+		Assertions.assertEquals(Prioritized.NORMAL_PRIORITY, loadingStrategy.getPriority());
+
+		loadingStrategy = strategies.get(i++);
+		Assertions.assertEquals(ServicesLoadingStrategy.class, loadingStrategy.getClass());
+		Assertions.assertEquals(Prioritized.MIN_PRIORITY, loadingStrategy.getPriority());
+	}
+
+	/**
+	 *
+	 */
+	@Test
+	public void testOverridden()
+	{
+		final ExtensionLoader<TestAnnotationSPI> loader = ExtensionLoader.getExtensionLoader(TestAnnotationSPI.class);
+		final TestAnnotationSPI aa = loader.getActivate("1");
+		Assertions.assertEquals(TestAnnotationSPIImpl2.class, aa.getClass());
 	}
 }

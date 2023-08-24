@@ -20,11 +20,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -34,8 +36,12 @@ import org.slf4j.LoggerFactory;
 
 import com.zeng.spi.extension.annotation.Activate;
 import com.zeng.spi.extension.annotation.SPI;
+import com.zeng.spi.extension.constants.CommonConstants;
+import com.zeng.spi.extension.lang.Prioritized;
 import com.zeng.spi.extension.support.ActivateComparator;
+import com.zeng.spi.extension.util.ConfigUtils;
 import com.zeng.spi.extension.util.Holder;
+import com.zeng.spi.extension.util.PropertiesUtils;
 
 /**
  * The type Extension loader. This is done by loading the properties file.
@@ -47,12 +53,7 @@ import com.zeng.spi.extension.util.Holder;
 @SuppressWarnings("all")
 public final class ExtensionLoader<T>
 {
-
 	private static final Logger LOG = LoggerFactory.getLogger(ExtensionLoader.class);
-	/**
-	 * SPI配置扩展的文件位置，扩展文件命名格式为SPI接口的全路径名，如：com.zeng.spi.extension.TestAnnotationSPI
-	 */
-	private static final String SPI_EXTENSION_DIRECTORY = "META-INF/spi-extension/";
 	/**
 	 * 扩展接口{@link Class}
 	 */
@@ -83,11 +84,59 @@ public final class ExtensionLoader<T>
 	 */
 	private String cachedDefaultName;
 
+	/**
+	 * Activate的缓存实例，名称，分组
+	 */
 	private final Map<String, Object> cachedActivates = Collections.synchronizedMap(new LinkedHashMap<>());
 	private final Map<String, Set<String>> cachedActivateGroups = Collections.synchronizedMap(new LinkedHashMap<>());
 	private final Map<String, String[]> cachedActivateValues = Collections.synchronizedMap(new LinkedHashMap<>());
-
 	private final ActivateComparator activateComparator;
+
+	/**
+	 * 通过JDK原生SPI扩展不同的加载策略
+	 */
+	private static volatile LoadingStrategy[] strategies = ExtensionLoader.loadLoadingStrategies();
+	private static final Map<String, String> specialSPILoadingStrategyMap = ExtensionLoader.getSpecialSPILoadingStrategyMap();
+
+	/**
+	 * Load all {@link Prioritized prioritized} {@link LoadingStrategy Loading Strategies} via {@link ServiceLoader}
+	 *
+	 * @return non-null
+	 * @since 2.7.7
+	 */
+	private static LoadingStrategy[] loadLoadingStrategies()
+	{
+		return StreamSupport.stream(ServiceLoader.load(LoadingStrategy.class).spliterator(), false).sorted()
+				.toArray(LoadingStrategy[]::new);
+	}
+
+	/**
+	 * some spi are implements by dubbo framework only and scan multi classloaders resources may cause application
+	 * startup very slow
+	 *
+	 * @return
+	 */
+	private static Map<String, String> getSpecialSPILoadingStrategyMap()
+	{
+		final Map map = new ConcurrentHashMap<>();
+		final Properties properties = PropertiesUtils.loadProperties(ExtensionLoader.class.getClassLoader(),
+				CommonConstants.SPECIAL_SPI_PROPERTIES);
+		map.putAll(properties);
+		return map;
+	}
+
+	/**
+	 * Get all {@link LoadingStrategy Loading Strategies}
+	 *
+	 * @return non-null
+	 * @see LoadingStrategy
+	 * @see Prioritized
+	 * @since 2.7.7
+	 */
+	public static List<LoadingStrategy> getLoadingStrategies()
+	{
+		return Arrays.asList(strategies);
+	}
 
 	/**
 	 * Instantiates a new Extension loader.
@@ -119,7 +168,16 @@ public final class ExtensionLoader<T>
 				if (Objects.isNull(classes))
 				{
 					// 加载扩展
-					classes = loadExtensionClass();
+					try
+					{
+						classes = loadExtensionClasses();
+					}
+					catch (final InterruptedException e)
+					{
+						LOG.error("", "", "", "Exception occurred when loading extension class (interface: " + this.type + ")", e);
+						throw new IllegalStateException(
+								"Exception occurred when loading extension class (interface: " + this.type + ")", e);
+					}
 					// 缓存扩展实现集合
 					this.cachedClasses.set(classes);
 				}
@@ -131,31 +189,55 @@ public final class ExtensionLoader<T>
 	/**
 	 * @return
 	 */
-	private Map<String, Class<?>> loadExtensionClass()
+	private Map<String, Class<?>> loadExtensionClasses() throws InterruptedException
+	{
+		cacheDefaultExtensionName();
+
+		final Map<String, Class<?>> extensionClasses = new HashMap<>();
+		// 从文件加载扩展实现
+		for (final LoadingStrategy strategy : strategies)
+		{
+			loadDirectory(extensionClasses, strategy, this.type.getName());
+		}
+
+		return extensionClasses;
+	}
+
+	/**
+	 * extract and cache default extension name if exists
+	 */
+	private void cacheDefaultExtensionName()
 	{
 		// 扩展接口Class，必须包含SPI注解
-		final SPI annotation = this.type.getAnnotation(SPI.class);
-		if (Objects.nonNull(annotation))
+		final SPI defaultAnnotation = this.type.getAnnotation(SPI.class);
+		if (defaultAnnotation == null)
 		{
-			final String value = annotation.value();
-			if (StringUtils.isNoneBlank(value))
+			return;
+		}
+
+		String value = defaultAnnotation.value();
+		if ((value = value.trim()).length() > 0)
+		{
+			final String[] names = NAME_SEPARATOR.split(value);
+			if (names.length > 1)
 			{
-				this.cachedDefaultName = value;
+				throw new IllegalStateException(
+						"More than 1 default extension name on extension " + this.type.getName() + ": " + Arrays.toString(names));
+			}
+			if (names.length == 1)
+			{
+				this.cachedDefaultName = names[0];
 			}
 		}
-		final Map<String, Class<?>> classes = new HashMap<>(16);
-		// 从文件加载扩展实现
-		loadDirectory(classes);
-		return classes;
 	}
 
 	/**
 	 * @param classes
 	 */
-	private void loadDirectory(final Map<String, Class<?>> classes)
+	private void loadDirectory(final Map<String, Class<?>> classes, final LoadingStrategy strategy, final String type)
 	{
 		// 文件名
-		final String fileName = SPI_EXTENSION_DIRECTORY + this.type.getName();
+		final String fileName = strategy.directory() + type;
 		try
 		{
 			final ClassLoader classLoader = ExtensionLoader.class.getClassLoader();
@@ -168,7 +250,7 @@ public final class ExtensionLoader<T>
 				{
 					final URL url = urls.nextElement();
 					// 加载资源
-					loadResources(classes, url);
+					loadResources(classes, url, strategy.overridden());
 				}
 			}
 		}
@@ -178,7 +260,7 @@ public final class ExtensionLoader<T>
 		}
 	}
 
-	private void loadResources(final Map<String, Class<?>> classes, final URL url)
+	private void loadResources(final Map<String, Class<?>> classes, final URL url, final boolean overridden)
 	{
 		// 读取文件到Properties，遍历Properties，得到配置文件key（名字）和value（扩展实现的Class）
 		try (InputStream inputStream = url.openStream())
@@ -193,7 +275,7 @@ public final class ExtensionLoader<T>
 					try
 					{
 						// 加载扩展实现Class，就是想其缓存起来，缓存到集合中
-						loadClass(classes, name, classPath);
+						loadClass(classes, name, classPath, overridden);
 					}
 					catch (final ClassNotFoundException e)
 					{
@@ -208,7 +290,7 @@ public final class ExtensionLoader<T>
 		}
 	}
 
-	private void loadClass(final Map<String, Class<?>> classes, String name, final String classPath)
+	private void loadClass(final Map<String, Class<?>> classes, String name, final String classPath, final boolean overridden)
 			throws ClassNotFoundException
 	{
 		final ClassLoader classLoader = ExtensionLoader.class.getClassLoader();
@@ -245,7 +327,7 @@ public final class ExtensionLoader<T>
 			for (final String n : names)
 			{
 				cacheName(subClass, n);
-				saveInExtensionClass(classes, subClass, n);
+				saveInExtensionClass(classes, subClass, n, overridden);
 			}
 		}
 	}
@@ -256,11 +338,13 @@ public final class ExtensionLoader<T>
 	 * @param classes
 	 * @param clazz
 	 * @param name
+	 * @param overridden
 	 */
-	private void saveInExtensionClass(final Map<String, Class<?>> extensionClasses, final Class<?> clazz, final String name)
+	private void saveInExtensionClass(final Map<String, Class<?>> extensionClasses, final Class<?> clazz, final String name,
+			final boolean overridden)
 	{
 		final Class<?> c = extensionClasses.get(name);
-		if (c == null)
+		if (c == null || overridden)
 		{
 			extensionClasses.put(name, clazz);
 		}
@@ -697,7 +781,7 @@ public final class ExtensionLoader<T>
 			{
 				final String k = entry.getKey();
 				final String v = entry.getValue();
-				final boolean active = (k.equals(key) || k.endsWith("." + key)) && !ExtensionLoader.isEmpty(v);
+				final boolean active = (k.equals(key) || k.endsWith("." + key)) && !ConfigUtils.isEmpty(v);
 				if (active)
 				{
 					return true;
@@ -705,15 +789,5 @@ public final class ExtensionLoader<T>
 			}
 		}
 		return false;
-	}
-
-	/**
-	 * @param value
-	 * @return
-	 */
-	private static boolean isEmpty(final String value)
-	{
-		return value == null || value.length() == 0 || "false".equalsIgnoreCase(value) || "0".equalsIgnoreCase(value)
-				|| "null".equalsIgnoreCase(value) || "N/A".equalsIgnoreCase(value);
 	}
 }
